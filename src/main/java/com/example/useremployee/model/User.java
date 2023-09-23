@@ -12,21 +12,21 @@ import lombok.*;
 @Entity
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int userID;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private int id;
 
-    @Column(unique = true)
-    private String email;
-    //@JsonIgnore - skal klares med DTO
-    private String password;
+  @Column(unique = true)
+  private String email;
+  //@JsonIgnore - skal klares med DTO
+  private String password;
 
-    @OneToOne(cascade = CascadeType.ALL, mappedBy = "user")
-    @JsonBackReference //do not include in json response
-    private Employee employee;
+  @OneToOne(cascade = CascadeType.ALL, mappedBy = "user")
+  @JsonBackReference //do not include in json response
+  private Employee employee;
 
-    public User(String email, String password) {
-        this.email = email;
-        this.password = password;
-    }
+  public User( String email, String password ) {
+    this.email = email;
+    this.password = password;
+  }
 }

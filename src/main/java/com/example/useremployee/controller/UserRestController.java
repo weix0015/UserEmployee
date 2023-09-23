@@ -1,10 +1,11 @@
 package com.example.useremployee.controller;
 
-import com.example.useremployee.dto.UserConverter;
-import com.example.useremployee.dto.UserDTO;
+import com.example.useremployee.dto.UserNoIdDTO;
+import com.example.useremployee.dto.UserNoIdNoPasswordNoEmployeeDTO;
+import com.example.useremployee.dto.UserNoPasswordDTO;
+import com.example.useremployee.model.Employee;
 import com.example.useremployee.model.User;
-import com.example.useremployee.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.useremployee.singleton.Registry;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,55 +17,62 @@ import java.util.Optional;
 
 @RestController
 public class UserRestController {
+  @GetMapping("/users")
+  public ResponseEntity<List<UserNoPasswordDTO>> getAllUsers() {
+    List<User> users = Registry.userRepository.findAll();
+    List<UserNoPasswordDTO> userNoPasswordDTOs = new ArrayList<>();
+    users.forEach( user -> {
+      userNoPasswordDTOs.add( Registry.userConverter.toNoPasswordDTO( user ) );
+    } );
+    return ResponseEntity.ok( userNoPasswordDTOs );
+  }
 
-    @Autowired
-    UserRepository userRepository;
-
-    @Autowired
-    UserConverter userConverter;
-
-    @GetMapping("/users")
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
-        List<User> userList = userRepository.findAll();
-        List<UserDTO> userDTOList = new ArrayList<>();
-        userList.forEach(user -> {
-            userDTOList.add(userConverter.toDTO(user));
-        });
-        return ResponseEntity.ok(userDTOList);
+  @PostMapping("/user")
+  @ResponseStatus(HttpStatus.CREATED)
+  public ResponseEntity<UserNoPasswordDTO> postUser( @RequestBody UserNoIdDTO userDTO ) {
+    try {
+      User user = Registry.userConverter.mergeToEntity( userDTO );
+      Registry.userRepository.save( user );
+      user.getEmployee().setUser( user );
+      Registry.employeeRepository.save( user.getEmployee() );
+      return ResponseEntity.ok( Registry.userConverter.toNoPasswordDTO( user ) );
+    } catch ( Exception e ) {
+      System.err.println( e.getMessage() );
+      return ResponseEntity.badRequest().build();
     }
+  }
 
-    @PostMapping("/user")
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserDTO postUser(@RequestBody UserDTO userDTO){
-        User user = userConverter.toEntity(userDTO);
-        user.setUserID(0);
-        System.out.println(user);
-        return userConverter.toDTO(user);
+  @PutMapping("/user/{id}")
+  public ResponseEntity<String> putUser( @PathVariable("id") int id, @RequestBody UserNoIdNoPasswordNoEmployeeDTO userDTO ) {
+    Optional<User> optionalUser = Registry.userRepository.findById( id );
+    if ( optionalUser.isPresent() ) {
+      try {
+        User user = Registry.userConverter.mergeToEntity( id, userDTO );
+        Registry.userRepository.save( user );
+        return ResponseEntity.ok("Ok");
+      } catch ( Exception e ) {
+        System.err.println( e.getMessage() );
+        return ResponseEntity.badRequest().body( e.getMessage() );
+      }
+    } else {
+      return ResponseEntity.notFound().build();
     }
+  }
 
-    @PutMapping("/user/{id}")
-    public ResponseEntity<UserDTO> putUser(@PathVariable("id") int id, @RequestBody UserDTO userDTO){
-        Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isPresent()) {
-            User user = userConverter.toEntity(userDTO);
-            user.setUserID(id);
-            userRepository.save(user);
-            return ResponseEntity.ok(userConverter.toDTO(user));
-        }
-        else {
-            return ResponseEntity.notFound().build();
-        }
+  @DeleteMapping("/user/{id}")
+  public ResponseEntity<String> deleteUser( @PathVariable("id") int id ) {
+    User user = Registry.userRepository.findById( id ).orElse( null );
+    if ( user != null ) {
+      Employee employee = user.getEmployee();
+      if ( employee != null ) {
+        user.setEmployee( null );
+        employee.setUser( null );
+        Registry.employeeRepository.save( employee );
+      }
+      Registry.userRepository.deleteById( id );
+      return ResponseEntity.ok( "User deleted" );
+    } else {
+      return ResponseEntity.notFound().build();
     }
-
-    @DeleteMapping("/user/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable("id") int id){
-        Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isPresent()){
-            userRepository.deleteById(id);
-            return ResponseEntity.ok("User deleted");
-        }
-        else{
-            return ResponseEntity.notFound().build();
-        }
-    }
+  }
 }

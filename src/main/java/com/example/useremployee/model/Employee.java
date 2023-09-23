@@ -14,20 +14,23 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 public class Employee {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private int id;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+  private String name;
+  private LocalDateTime born;
+  private Gender gender;
+  private boolean vegetarian;
 
-    private String name;
-    private LocalDateTime born;
-    private Gender gender;
-    private boolean vegetarian;
+  @OneToOne
+  private User user;
 
-    @OneToOne
-    @JoinColumn(name = "useridfk", referencedColumnName = "userID", nullable = false)
-    private User user;
-
+  public Employee( String name, LocalDateTime born, Gender gender, boolean vegetarian ) {
+    this.name = name;
+    this.born = born;
+    this.gender = gender;
+    this.vegetarian = vegetarian;
+  }
 }
-
 
